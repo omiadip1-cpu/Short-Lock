@@ -163,12 +163,14 @@ class MainActivity : Activity() {
                         "4. Recent apps: long-press Shorts Lock > lock icon\n" +
                         "5. If Accessibility is greyed out: App info > menu > Allow restricted settings"
                 listOf("vivo", "iqoo").any { it in brand } ->
-                    "Vivo / iQOO:\n" +
-                        "1. Settings > Battery > Background power consumption > Shorts Lock: Allow\n" +
-                        "2. i Manager > App manager > Autostart: Shorts Lock ON\n" +
+                    "Vivo / iQOO (Vivo closes apps the hardest, do all of these):\n" +
+                        "1. Settings > Battery > Background power consumption management > Shorts Lock: Allow high background power consumption\n" +
+                        "2. Settings > Apps > Autostart (or i Manager > App manager > Autostart): Shorts Lock ON\n" +
                         "3. App info > Permissions: allow 'Background pop-ups' / 'Display pop-up windows'\n" +
-                        "4. Recent apps: pull down on Shorts Lock to lock it\n" +
-                        "5. If Accessibility is greyed out: App info > menu > Allow restricted settings"
+                        "4. Settings > Notifications > Shorts Lock: Allow (keeps it running)\n" +
+                        "5. Recent apps: swipe DOWN on the Shorts Lock card until a lock icon shows\n" +
+                        "6. Settings > Battery: turn off Power saving mode\n" +
+                        "7. If Accessibility is greyed out: App info > menu > Allow restricted settings"
                 else ->
                     "1. Battery: set Shorts Lock to unrestricted\n" +
                         "2. If Accessibility is greyed out: App info > menu > Allow restricted settings"
