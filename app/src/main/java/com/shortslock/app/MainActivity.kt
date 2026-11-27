@@ -96,6 +96,16 @@ class MainActivity : Activity() {
             store.put(ShortsLockService.KEY_ACTIVE to "0")
             ShortsLockService.instance?.hideBubble()
         }
+        debugSection(store)
+    }
+
+    /** Phase 4 diagnostics: what the last START recorded and the last detection change. */
+    private fun debugSection(store: PrefsStore) {
+        val ids = store.get(ShortsLockService.KEY_SNAPSHOT)?.lines()?.filter { it.isNotBlank() }.orEmpty()
+        text("Detection debug", 18f)
+        text("Last state: ${store.get(ShortsLockService.KEY_STATE) ?: "none"}")
+        text("Recorded elements: ${ids.size}")
+        if (ids.isNotEmpty()) text(ids.take(40).joinToString("\n") { it.substringAfter(":id/") }, 11f)
     }
 
     override fun onResume() {
