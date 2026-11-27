@@ -1,7 +1,9 @@
 package com.shortslock.app
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import android.text.InputFilter
 import android.text.InputType
 import android.view.View
@@ -74,6 +76,31 @@ class MainActivity : Activity() {
             f.text.clear()
         }
         button("Forgot PIN? Use recovery code") { resetScreen() }
+        activationSection()
+    }
+
+    private fun activationSection() {
+        val on = ShortsLockService.instance != null
+        text("Accessibility service: ${if (on) "ON" else "OFF"}", 18f)
+        if (!on) text(
+            "Tap Activate, then switch on Shorts Lock in Accessibility. If the switch is greyed out: " +
+                "Settings > Apps > Shorts Lock > menu (three dots) > Allow restricted settings, then try again."
+        )
+        val store = PrefsStore(this)
+        button("Activate (show bubble)") {
+            store.put(ShortsLockService.KEY_ACTIVE to "1")
+            val s = ShortsLockService.instance
+            if (s != null) s.showBubble() else startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }
+        button("Deactivate (hide bubble)") {
+            store.put(ShortsLockService.KEY_ACTIVE to "0")
+            ShortsLockService.instance?.hideBubble()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::root.isInitialized) render()
     }
 
     private fun resetScreen() {
