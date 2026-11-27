@@ -194,7 +194,6 @@ class ShortsLockService : AccessibilityService() {
         }
 
         when (LockPolicy.onForeground(pkg, imePackage(), keyguardLocked())) {
-            Action.BACK -> performGlobalAction(GLOBAL_ACTION_BACK)
             Action.RETURN -> returnToShorts(RETURN_COOLDOWN_MS)
             Action.NONE -> if (yt && !on) returnToShorts(RETURN_IN_YOUTUBE_COOLDOWN_MS)
         }
@@ -240,6 +239,11 @@ class ShortsLockService : AccessibilityService() {
         if (fullScreenCoords) layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
     }
 
+    /** The system may already have removed our overlays (e.g. while the service is being stopped). */
+    private fun removeSafely(v: View) {
+        try { wm.removeView(v) } catch (e: IllegalArgumentException) { }
+    }
+
     private fun blocker(color: Int) = View(this).apply {
         setBackgroundColor(color)
         setOnTouchListener { _, _ -> true } // swallow every touch
@@ -248,7 +252,7 @@ class ShortsLockService : AccessibilityService() {
     /** Overlays added later sit on top, so re-add the bubble and the PIN screen after new shields. */
     private fun raiseTop() {
         listOf(bubble to bubbleLp, pinView to pinLp).forEach { (v, lp) ->
-            if (v != null && lp != null) { wm.removeViewImmediate(v); wm.addView(v, lp) }
+            if (v != null && lp != null && v.isAttachedToWindow) { wm.removeViewImmediate(v); wm.addView(v, lp) }
         }
     }
 
@@ -266,7 +270,7 @@ class ShortsLockService : AccessibilityService() {
     }
 
     private fun hideShields() {
-        shieldViews.forEach { wm.removeView(it) }
+        shieldViews.forEach { removeSafely(it) }
         shieldViews.clear()
     }
 
@@ -282,7 +286,7 @@ class ShortsLockService : AccessibilityService() {
     }
 
     private fun hideStrip() {
-        strip?.let { wm.removeView(it) }
+        strip?.let { removeSafely(it) }
         strip = null
     }
 
@@ -344,7 +348,7 @@ class ShortsLockService : AccessibilityService() {
     }
 
     private fun hidePin() {
-        pinView?.let { wm.removeView(it) }
+        pinView?.let { removeSafely(it) }
         pinView = null
         pinLp = null
     }
@@ -374,7 +378,7 @@ class ShortsLockService : AccessibilityService() {
     fun hideBubble() {
         hideMenu()
         hideShields()
-        bubble?.let { wm.removeView(it) }
+        bubble?.let { removeSafely(it) }
         bubble = null
         bubbleBg = null
         bubbleLp = null
@@ -451,7 +455,7 @@ class ShortsLockService : AccessibilityService() {
     }
 
     private fun hideMenu() {
-        menu?.let { wm.removeView(it) }
+        menu?.let { removeSafely(it) }
         menu = null
     }
 

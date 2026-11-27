@@ -15,7 +15,8 @@ Run on each phone (Xiaomi and Vivo). Mark pass/fail.
 | 8 | Phone Home | Returns to Shorts within ~1-2 s |
 | 9 | Back (gesture or button) | Returns to Shorts within ~1-3 s |
 | 10 | Recent apps | Returns to Shorts |
-| 11 | Pull down notification shade | Blocked, or closes at once |
+| 11 | Pull down notification shade | Blocked by the top strip |
+| 11b | Hold Power while locked | Power menu stays open (reboot / Safe Mode still possible) |
 | 12 | Open Settings (any route) | Returns to Shorts |
 | 13 | Tap bubble | PIN keypad only, no menu; bubble cannot be dragged |
 | 14 | Wrong PIN x5 | Never unlocks; then "Wait 60 s" |

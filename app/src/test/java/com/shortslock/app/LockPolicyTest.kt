@@ -23,7 +23,7 @@ class LockPolicyTest {
         )) assertEquals(p, Action.RETURN, act(p))
     }
 
-    @Test fun shadeIsClosedWithBack() = assertEquals(Action.BACK, act("com.android.systemui"))
+    @Test fun systemUiIsLeftAloneSoThePowerMenuStaysUsable() = assertEquals(Action.NONE, act("com.android.systemui"))
 
     @Test fun lockScreenAndTransitionsDoNothing() {
         assertEquals(Action.NONE, act(null))

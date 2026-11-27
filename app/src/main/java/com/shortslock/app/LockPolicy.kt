@@ -2,7 +2,7 @@ package com.shortslock.app
 
 /** Decisions the lock makes, kept free of Android classes so they can be unit-tested. */
 object LockPolicy {
-    enum class Action { NONE, RETURN, BACK }
+    enum class Action { NONE, RETURN }
 
     const val YOUTUBE = "com.google.android.youtube"
     private const val SYSTEMUI = "com.android.systemui"
@@ -22,7 +22,9 @@ object LockPolicy {
     fun onForeground(pkg: String?, imePkg: String?, keyguardLocked: Boolean): Action = when {
         pkg == null || keyguardLocked -> Action.NONE // mid-transition, or the phone's own lock screen
         pkg == YOUTUBE -> Action.NONE
-        pkg == SYSTEMUI -> Action.BACK // notification shade or system dialog: close it
+        // Shade, volume panel, and the power menu (needed for reboot / Safe Mode recovery) all live here.
+        // We must not close the power menu, so the shade is blocked by the status-bar strip instead.
+        pkg == SYSTEMUI -> Action.NONE
         pkg in CALLS_AND_ALARMS || pkg == imePkg -> Action.NONE
         else -> Action.RETURN // home, recents, Settings, installer, any other app, even Shorts Lock itself
     }
