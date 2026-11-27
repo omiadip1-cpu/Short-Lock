@@ -1,7 +1,10 @@
 package com.shortslock.app
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.text.InputFilter
@@ -93,10 +96,50 @@ class MainActivity : Activity() {
             if (s != null) s.showBubble() else startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
         button("Deactivate (hide bubble)") {
+            val s = ShortsLockService.instance
+            if (s?.isLocked == true) return@button // unlock with the bubble PIN first
             store.put(ShortsLockService.KEY_ACTIVE to "0")
-            ShortsLockService.instance?.hideBubble()
+            s?.hideBubble()
         }
+        setupSection()
         debugSection(store)
+    }
+
+    /** One-time phone setup so Xiaomi/Vivo do not kill the service or block it from reopening YouTube. */
+    private fun setupSection() {
+        val brand = (Build.MANUFACTURER + " " + Build.BRAND).lowercase()
+        text("Phone setup (do once)", 18f)
+        text(
+            when {
+                listOf("xiaomi", "redmi", "poco").any { it in brand } ->
+                    "Xiaomi / Redmi / POCO:\n" +
+                        "1. App info > Autostart: ON\n" +
+                        "2. App info > Battery saver: No restrictions\n" +
+                        "3. App info > Other permissions: allow 'Display pop-up windows while running in the background'\n" +
+                        "4. Recent apps: long-press Shorts Lock > lock icon\n" +
+                        "5. If Accessibility is greyed out: App info > menu > Allow restricted settings"
+                listOf("vivo", "iqoo").any { it in brand } ->
+                    "Vivo / iQOO:\n" +
+                        "1. Settings > Battery > Background power consumption > Shorts Lock: Allow\n" +
+                        "2. i Manager > App manager > Autostart: Shorts Lock ON\n" +
+                        "3. App info > Permissions: allow 'Background pop-ups' / 'Display pop-up windows'\n" +
+                        "4. Recent apps: pull down on Shorts Lock to lock it\n" +
+                        "5. If Accessibility is greyed out: App info > menu > Allow restricted settings"
+                else ->
+                    "1. Battery: set Shorts Lock to unrestricted\n" +
+                        "2. If Accessibility is greyed out: App info > menu > Allow restricted settings"
+            }
+        )
+        button("Open app info") {
+            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+        }
+        button("Turn off battery optimisation") {
+            try {
+                startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
+            } catch (e: ActivityNotFoundException) {
+                startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            }
+        }
     }
 
     /** Phase 4 diagnostics: what the last START recorded and the last detection change. */
