@@ -130,11 +130,26 @@ class MainActivity : Activity() {
             store.put(ShortsLockService.KEY_ACTIVE to "0")
             s?.hideBubble()
         }
+        timerSection(store)
         setupSection()
         debugSection(store)
     }
 
     /** One-time phone setup so Xiaomi/Vivo do not kill the service or block it from reopening YouTube. */
+    /** Lock length, 1 to 4 hours. Applies to the next START; the bubble's long-press menu changes the same setting. */
+    private fun timerSection(store: PrefsStore) {
+        val current = LockPolicy.validDuration(store.get(ShortsLockService.KEY_DURATION)?.toIntOrNull())
+        text("Lock timer: ${LockPolicy.label(current)}", 18f)
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        LockPolicy.DURATIONS_MIN.forEach { m ->
+            row.addView(Button(this).apply {
+                text = if (m == current) "✓ ${LockPolicy.label(m)}" else LockPolicy.label(m)
+                setOnClickListener { store.put(ShortsLockService.KEY_DURATION to m.toString()); render() }
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        }
+        root.addView(row)
+    }
+
     private fun setupSection() {
         val brand = (Build.MANUFACTURER + " " + Build.BRAND).lowercase()
         text("Phone setup (do once)", 18f)

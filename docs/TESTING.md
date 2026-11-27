@@ -22,7 +22,7 @@ Run on each phone (Xiaomi and Vivo). Mark pass/fail.
 | 13 | Tap bubble | PIN keypad only, no menu; bubble cannot be dragged |
 | 14 | Wrong PIN x5 | Never unlocks; then "Wait 60 s" |
 | 15 | Correct PIN | "Unlocked", bubble grey, phone normal |
-| 16 | Timer: lock with 15 min, wait | Unlocks by itself at the end |
+| 16 | Set Lock timer to 1 h in the app, START, wait (or check toast says 1 h) | Unlocks by itself at the end |
 | 17 | Incoming call / alarm while locked | Can answer/dismiss; then back to Shorts |
 | 18 | Screen off and on while locked | Lock still on; timer keeps counting |
 | 19 | Simulate a crash while locked (not Force stop, which keeps the app stopped): from a computer run `adb shell am crash com.shortslock.app`, or `adb shell kill` its process | Service reconnects within seconds and the lock resumes (before the timer ends) |

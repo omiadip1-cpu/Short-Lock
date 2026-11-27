@@ -3,7 +3,7 @@
 You can never be permanently locked out. In order of convenience:
 
 1. Tap the bubble and enter your PIN.
-2. Wait for the timer you chose at START (max 4 h). The lock ends by itself.
+2. Wait for the timer you chose at START (1 to 4 h, set in the app). The lock ends by itself.
 3. Forgot the PIN: open Shorts Lock > "Forgot PIN? Use recovery code". (Needs the lock off first, so use 2, 4 or 5.)
 4. Reboot the phone. A reboot always starts unlocked.
 5. Safe Mode: hold Power, then long-press "Power off" > OK. Third-party apps (including Shorts Lock) do not run in Safe Mode. Reboot normally to leave Safe Mode; the phone then starts unlocked and you can open Shorts Lock (e.g. to use the recovery code).

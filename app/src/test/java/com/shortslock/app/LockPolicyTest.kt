@@ -33,8 +33,14 @@ class LockPolicyTest {
 
     @Test fun durationsCycleAndLabel() {
         assertEquals(120, LockPolicy.nextDuration(60))
-        assertEquals(15, LockPolicy.nextDuration(240))
-        assertEquals(15, LockPolicy.nextDuration(999))
+        assertEquals(180, LockPolicy.nextDuration(120))
+        assertEquals(60, LockPolicy.nextDuration(240))
+        assertEquals(60, LockPolicy.nextDuration(999))
+        assertEquals(LockPolicy.DURATIONS_MIN, listOf(60, 120, 180, 240))
+        assertEquals(180, LockPolicy.validDuration(180))
+        assertEquals(60, LockPolicy.validDuration(15))
+        assertEquals(60, LockPolicy.validDuration(300))
+        assertEquals(60, LockPolicy.validDuration(null))
         assertEquals("30 min", LockPolicy.label(30))
         assertEquals("2 h", LockPolicy.label(120))
     }

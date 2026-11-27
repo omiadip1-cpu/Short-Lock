@@ -15,7 +15,8 @@ object LockPolicy {
         "com.sec.android.app.clockpackage",
     )
 
-    val DURATIONS_MIN = listOf(15, 30, 60, 120, 240)
+    /** Lock timer choices: 1 to 4 hours. */
+    val DURATIONS_MIN = listOf(60, 120, 180, 240)
     const val DEFAULT_DURATION_MIN = 60
 
     /** What to do when [pkg] is the app in front while locked. Everything not allowed is sent back to Shorts. */
@@ -28,6 +29,9 @@ object LockPolicy {
         pkg in CALLS_AND_ALARMS || pkg == imePkg -> Action.NONE
         else -> Action.RETURN // home, recents, Settings, installer, any other app, even Shorts Lock itself
     }
+
+    /** Saved value if it is one of the choices, otherwise the default (also covers old 15/30 min settings). */
+    fun validDuration(saved: Int?) = if (saved in DURATIONS_MIN) saved!! else DEFAULT_DURATION_MIN
 
     fun nextDuration(current: Int) = DURATIONS_MIN[(DURATIONS_MIN.indexOf(current) + 1) % DURATIONS_MIN.size]
 

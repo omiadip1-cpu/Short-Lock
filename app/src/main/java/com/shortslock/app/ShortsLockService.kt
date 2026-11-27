@@ -51,7 +51,10 @@ class ShortsLockService : AccessibilityService() {
     private var shieldBoxes: List<Box> = emptyList()
     private val shieldViews = ArrayList<View>()
     private var tint = false // test aid: paints the shields red so you can see where they are
-    private var durationMin = LockPolicy.DEFAULT_DURATION_MIN
+    /** Stored in prefs so the app screen and the bubble menu share one setting. */
+    private var durationMin: Int
+        get() = LockPolicy.validDuration(store.get(KEY_DURATION)?.toIntOrNull())
+        set(v) { store.put(KEY_DURATION to v.toString()) }
     private var lockUntil = 0L
     private var lastReturn = 0L
 
@@ -74,7 +77,6 @@ class ShortsLockService : AccessibilityService() {
     override fun onServiceConnected() {
         instance = this
         wm = getSystemService(WindowManager::class.java)
-        durationMin = store.get(KEY_DURATION)?.toIntOrNull() ?: LockPolicy.DEFAULT_DURATION_MIN
         if (store.get(KEY_ACTIVE) == "1") showBubble()
         restoreAfterCrash()
     }
@@ -460,7 +462,6 @@ class ShortsLockService : AccessibilityService() {
                 text = "Time: ${LockPolicy.label(durationMin)}"
                 setOnClickListener {
                     durationMin = LockPolicy.nextDuration(durationMin)
-                    store.put(KEY_DURATION to durationMin.toString())
                     text = "Time: ${LockPolicy.label(durationMin)}"
                 }
             })
@@ -498,7 +499,7 @@ class ShortsLockService : AccessibilityService() {
         const val KEY_STATE = "dbg_state"
         const val KEY_SHIELDS = "dbg_shields"
         private const val KEY_LOCK_UNTIL = "lock_until"
-        private const val KEY_DURATION = "duration"
+        const val KEY_DURATION = "duration"
         private const val KEY_BOOT = "lock_boot"
         const val YOUTUBE = LockPolicy.YOUTUBE
         private const val YT_ID_PREFIX = "$YOUTUBE:id/"
