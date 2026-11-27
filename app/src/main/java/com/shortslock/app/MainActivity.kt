@@ -2,6 +2,7 @@ package com.shortslock.app
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -87,18 +88,32 @@ class MainActivity : Activity() {
         activationSection()
     }
 
+    /** Opens Shorts Lock's own on/off page (Android 11+), falling back to the general Accessibility list. */
+    private fun openServiceSwitch() {
+        val component = ComponentName(this, ShortsLockService::class.java).flattenToString()
+        try {
+            startActivity(Intent("android.settings.ACCESSIBILITY_DETAILS_SETTINGS")
+                .putExtra(Intent.EXTRA_COMPONENT_NAME, component))
+        } catch (e: ActivityNotFoundException) {
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        } catch (e: SecurityException) {
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }
+    }
+
     private fun activationSection() {
         val on = ShortsLockService.instance != null
         text("Accessibility service: ${if (on) "ON" else "OFF"}", 18f)
         if (!on) text(
-            "Tap Activate, then switch on Shorts Lock in Accessibility. If the switch is greyed out: " +
-                "Settings > Apps > Shorts Lock > menu (three dots) > Allow restricted settings, then try again."
+            "Tap Activate. On the next screen turn on Shorts Lock and tap Allow.\n" +
+                "Not there? Look under 'Downloaded apps' > Shorts Lock.\n" +
+                "Switch greyed out? Tap 'Allow restricted settings' below, then tap Activate again."
         )
         val store = PrefsStore(this)
         button("Activate (show bubble)") {
             store.put(ShortsLockService.KEY_ACTIVE to "1")
             val s = ShortsLockService.instance
-            if (s != null) s.showBubble() else startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            if (s != null) s.showBubble() else openServiceSwitch()
         }
         button("Deactivate (hide bubble)") {
             val s = ShortsLockService.instance
@@ -135,7 +150,7 @@ class MainActivity : Activity() {
                         "2. If Accessibility is greyed out: App info > menu > Allow restricted settings"
             }
         )
-        button("Open app info") {
+        button("Allow restricted settings (opens App info, then tap the three dots)") {
             startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
         }
         button("Turn off battery optimisation") {

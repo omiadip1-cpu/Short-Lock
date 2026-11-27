@@ -13,8 +13,8 @@ android {
         applicationId = "com.shortslock.app"
         minSdk = 29
         targetSdk = 34
-        versionCode = 10
-        versionName = "1.0.0"
+        versionCode = 11
+        versionName = "1.0.2"
     }
     signingConfigs {
         if (keystorePath != null) create("stable") {
