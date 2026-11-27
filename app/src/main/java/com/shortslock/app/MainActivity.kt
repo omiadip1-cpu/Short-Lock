@@ -101,6 +101,11 @@ class MainActivity : Activity() {
         }
     }
 
+    /** Gesture navigation can't be blocked by an overlay; 3-button navigation can. */
+    private fun usesGestureNavigation(): Boolean =
+        Settings.Secure.getInt(contentResolver, "navigation_mode", 0) == 2 ||
+            Settings.Global.getInt(contentResolver, "force_fsg_nav_bar", 0) == 1 // Xiaomi
+
     private fun activationSection() {
         val on = ShortsLockService.instance != null
         text("Accessibility service: ${if (on) "ON" else "OFF"}", 18f)
@@ -108,6 +113,10 @@ class MainActivity : Activity() {
             "Tap Activate. On the next screen turn on Shorts Lock and tap Allow.\n" +
                 "Not there? Look under 'Downloaded apps' > Shorts Lock.\n" +
                 "Switch greyed out? Tap 'Allow restricted settings' below, then tap Activate again."
+        )
+        if (usesGestureNavigation()) text(
+            "Your phone uses swipe gestures. Android cannot block swipes, so Home/Back will only be undone, not blocked. " +
+                "For full blocking switch to buttons: Settings > Display (or Additional settings) > System navigation > Buttons."
         )
         val store = PrefsStore(this)
         button("Activate (show bubble)") {

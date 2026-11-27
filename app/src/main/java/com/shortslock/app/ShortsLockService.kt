@@ -9,10 +9,12 @@ import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
+import android.util.DisplayMetrics
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -41,6 +43,7 @@ class ShortsLockService : AccessibilityService() {
     private var pinView: View? = null
     private var pinLp: WindowManager.LayoutParams? = null
     private var strip: View? = null
+    private var navBlock: View? = null
 
     private var detector: ShortsDetector? = null
     private var lastOn: Boolean? = null
@@ -71,6 +74,7 @@ class ShortsLockService : AccessibilityService() {
     override fun onServiceConnected() {
         instance = this
         wm = getSystemService(WindowManager::class.java)
+        durationMin = store.get(KEY_DURATION)?.toIntOrNull() ?: LockPolicy.DEFAULT_DURATION_MIN
         if (store.get(KEY_ACTIVE) == "1") showBubble()
         restoreAfterCrash()
     }
@@ -217,6 +221,7 @@ class ShortsLockService : AccessibilityService() {
     private fun keyguardLocked() = getSystemService(KeyguardManager::class.java).isKeyguardLocked
 
     private fun paint(on: Boolean?) {
+        (bubble as? TextView)?.text = if (on == null) "▶" else "🔒"
         bubbleBg?.setColor(
             when (on) {
                 null -> 0x99202020.toInt()
@@ -282,12 +287,33 @@ class ShortsLockService : AccessibilityService() {
         val v = blocker(if (tint) 0x440000FF else Color.TRANSPARENT)
         wm.addView(v, overlayParams(WindowManager.LayoutParams.MATCH_PARENT, h, true))
         strip = v
+        showNavBlock()
         raiseTop()
     }
+
+    /**
+     * Covers the 3-button navigation bar (Back, Home, Recents) so taps on it do nothing while locked.
+     * An accessibility overlay sits above the navigation bar. It cannot stop swipe gestures (gesture navigation),
+     * so for full blocking the phone must use 3-button navigation.
+     */
+    private fun showNavBlock() {
+        if (navBlock != null) return
+        val id = resources.getIdentifier("navigation_bar_height", "dimen", "android")
+        val navH = maxOf(if (id > 0) resources.getDimensionPixelSize(id) else 0, dp(48))
+        val v = blocker(if (tint) 0x4400FF00 else Color.TRANSPARENT)
+        wm.addView(v, overlayParams(WindowManager.LayoutParams.MATCH_PARENT, navH, true).apply { y = realHeight() - navH })
+        navBlock = v
+    }
+
+    private fun realHeight(): Int =
+        if (Build.VERSION.SDK_INT >= 30) wm.maximumWindowMetrics.bounds.height()
+        else DisplayMetrics().also { @Suppress("DEPRECATION") wm.defaultDisplay.getRealMetrics(it) }.heightPixels
 
     private fun hideStrip() {
         strip?.let { removeSafely(it) }
         strip = null
+        navBlock?.let { removeSafely(it) }
+        navBlock = null
     }
 
     // ---- PIN screen ----
@@ -360,8 +386,8 @@ class ShortsLockService : AccessibilityService() {
         val size = dp(BUBBLE_DP)
         val bg = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(0x99202020.toInt()) }
         val view = TextView(this).apply {
-            text = "S"
-            textSize = 20f
+            text = "▶"
+            textSize = 22f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
             background = bg
@@ -385,33 +411,37 @@ class ShortsLockService : AccessibilityService() {
     }
 
     private fun dragOrTap(lp: WindowManager.LayoutParams, size: Int) = object : View.OnTouchListener {
-        var sx = 0f; var sy = 0f; var ox = 0; var oy = 0; var moved = false
+        var sx = 0f; var sy = 0f; var ox = 0; var oy = 0; var moved = false; var longPressed = false
         val slop = ViewConfiguration.get(this@ShortsLockService).scaledTouchSlop
+        val longPress = Runnable { longPressed = true; if (!isLocked) showMenu() }
         override fun onTouch(v: View, e: MotionEvent): Boolean {
             when (e.action) {
-                MotionEvent.ACTION_DOWN -> { sx = e.rawX; sy = e.rawY; ox = lp.x; oy = lp.y; moved = false }
+                MotionEvent.ACTION_DOWN -> {
+                    sx = e.rawX; sy = e.rawY; ox = lp.x; oy = lp.y; moved = false; longPressed = false
+                    hideMenu()
+                    handler.postDelayed(longPress, ViewConfiguration.getLongPressTimeout().toLong())
+                }
                 MotionEvent.ACTION_MOVE -> {
                     if (isLocked) return true // no dragging while locked
                     val dx = e.rawX - sx; val dy = e.rawY - sy
-                    if (!moved && hypot(dx, dy) > slop) { moved = true; hideMenu() }
+                    if (!moved && hypot(dx, dy) > slop) { moved = true; handler.removeCallbacks(longPress); hideMenu() }
                     if (moved) {
                         lp.x = ox + dx.toInt(); lp.y = oy + dy.toInt()
                         wm.updateViewLayout(v, lp)
                     }
                 }
                 MotionEvent.ACTION_UP -> {
+                    handler.removeCallbacks(longPress)
+                    if (longPressed) return true // menu already open
                     if (moved) {
                         lp.x = BubbleMath.snapX(lp.x, size, screenW)
                         wm.updateViewLayout(v, lp)
                     } else {
                         v.performClick()
-                        when {
-                            isLocked -> showPin() // while locked a tap only ever opens the PIN screen
-                            menu == null -> showMenu()
-                            else -> hideMenu()
-                        }
+                        if (isLocked) showPin() else startLock() // locked: PIN only. Unlocked: one tap starts the lock
                     }
                 }
+                MotionEvent.ACTION_CANCEL -> handler.removeCallbacks(longPress)
             }
             return true
         }
@@ -425,11 +455,13 @@ class ShortsLockService : AccessibilityService() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(8), dp(8), dp(8), dp(8))
             background = GradientDrawable().apply { cornerRadius = dp(12).toFloat(); setColor(0xEE202020.toInt()) }
-            addView(TextView(context).apply { text = "Open YouTube Shorts, then START"; setTextColor(Color.WHITE) })
+            addView(TextView(context).apply { text = "Tap the bubble on Shorts to lock.
+Long-press for this menu."; setTextColor(Color.WHITE) })
             addView(Button(context).apply {
                 text = "Time: ${LockPolicy.label(durationMin)}"
                 setOnClickListener {
                     durationMin = LockPolicy.nextDuration(durationMin)
+                    store.put(KEY_DURATION to durationMin.toString())
                     text = "Time: ${LockPolicy.label(durationMin)}"
                 }
             })
@@ -467,6 +499,7 @@ class ShortsLockService : AccessibilityService() {
         const val KEY_STATE = "dbg_state"
         const val KEY_SHIELDS = "dbg_shields"
         private const val KEY_LOCK_UNTIL = "lock_until"
+        private const val KEY_DURATION = "duration"
         private const val KEY_BOOT = "lock_boot"
         const val YOUTUBE = LockPolicy.YOUTUBE
         private const val YT_ID_PREFIX = "$YOUTUBE:id/"

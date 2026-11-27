@@ -7,15 +7,15 @@ Run on each phone (Xiaomi and Vivo). Mark pass/fail.
 |---|---|---|
 | 1 | Set PIN, note recovery code | Code shown once |
 | 2 | Activate, enable Accessibility | Grey bubble appears over YouTube |
-| 3 | YouTube > Shorts > bubble > Time > START | Toast "Locked for ...", bubble green |
+| 3 | YouTube > Shorts > tap bubble once (long-press = time menu) | Toast "Locked for ...", bubble shows lock |
 | 4 | Swipe up/down in the middle | Next/previous Short plays |
 | 5 | Tap middle of video | Pauses/resumes |
 | 6 | Tap the buttons that were on screen at START (Like, Dislike, Comments, Share, Remix, channel, Search, bottom tabs) | Nothing happens |
 | 6b | Swipe to Shorts that show extra buttons (Subscribe, Shop, ads) and tap them | Record what happens: these may not be covered (known limit) |
 | 7 | Volume buttons | Volume changes |
-| 8 | Phone Home | Returns to Shorts within ~1-2 s |
-| 9 | Back (gesture or button) | Returns to Shorts within ~1-3 s |
-| 10 | Recent apps | Returns to Shorts |
+| 8 | Phone Home (3-button navigation) | Nothing happens |
+| 9 | Back button (3-button navigation) | Nothing happens. With gestures: returns to Shorts |
+| 10 | Recent apps button | Nothing happens |
 | 11 | Pull down notification shade | Blocked by the top strip |
 | 11b | Hold Power while locked | Power menu stays open (reboot / Safe Mode still possible) |
 | 12 | Open Settings (any route) | Returns to Shorts |
@@ -30,7 +30,7 @@ Run on each phone (Xiaomi and Vivo). Mark pass/fail.
 | 21 | Recovery code | Resets the PIN |
 
 ## Platform limitations (expected, not bugs)
-- Home, Back and Recents cannot be disabled without Device Owner; the child sees a brief flash before returning.
+- Home, Back and Recents buttons are blocked by an overlay on 3-button navigation. Swipe gestures cannot be blocked; with gestures the child is only returned to Shorts.
 - Return may land on a different Short than before.
 - Buttons not on screen at START (e.g. Subscribe/Shop on some Shorts) are not covered.
 - A swipe that starts on a covered button is swallowed; swipe from the middle.
