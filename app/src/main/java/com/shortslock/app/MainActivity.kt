@@ -191,6 +191,7 @@ class MainActivity : Activity() {
         val ids = store.get(ShortsLockService.KEY_SNAPSHOT)?.lines()?.filter { it.isNotBlank() }.orEmpty()
         text("Detection debug", 18f)
         text("Last state: ${store.get(ShortsLockService.KEY_STATE) ?: "none"}")
+        text("Last error: ${store.get(ShortsLockService.KEY_ERROR) ?: "none"}")
         text("Recorded elements: ${ids.size}")
         if (ids.isNotEmpty()) text(ids.take(40).joinToString("\n") { it.substringAfter(":id/") }, 11f)
         val shields = store.get(ShortsLockService.KEY_SHIELDS)?.lines()?.filter { it.isNotBlank() }.orEmpty()

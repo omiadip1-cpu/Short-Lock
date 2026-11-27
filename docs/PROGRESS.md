@@ -16,4 +16,4 @@
 Nothing has been tested on a real phone yet. Use docs/TESTING.md.
 
 ## Architecture change from spec
-- No foreground notification: an accessibility service does not need one, so it was left out.
+- Foreground notification added back in 1.2.1: Xiaomi killed the service after ~5 min without it.

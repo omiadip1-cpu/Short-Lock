@@ -1,6 +1,11 @@
 package com.shortslock.app
 
 import android.accessibilityservice.AccessibilityService
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.pm.ServiceInfo
+import android.util.Log
 import android.app.KeyguardManager
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -69,7 +74,7 @@ class ShortsLockService : AccessibilityService() {
     private val tick = object : Runnable {
         override fun run() {
             if (!isLocked) return
-            evaluate()
+            safeEvaluate()
             handler.postDelayed(this, TICK_MS)
         }
     }
@@ -77,6 +82,7 @@ class ShortsLockService : AccessibilityService() {
     override fun onServiceConnected() {
         instance = this
         wm = getSystemService(WindowManager::class.java)
+        stayInForeground()
         if (store.get(KEY_ACTIVE) == "1") showBubble()
         restoreAfterCrash()
     }
@@ -86,7 +92,7 @@ class ShortsLockService : AccessibilityService() {
         // Coalesce bursts of events (video progress fires constantly) into one check per EVAL_MS.
         if (evalScheduled) return
         evalScheduled = true
-        handler.postDelayed({ evalScheduled = false; evaluate() }, EVAL_MS)
+        handler.postDelayed({ evalScheduled = false; safeEvaluate() }, EVAL_MS)
     }
 
     override fun onInterrupt() = Unit
@@ -181,6 +187,41 @@ class ShortsLockService : AccessibilityService() {
             for (i in 0 until n.childCount) n.getChild(i)?.let { stack.add(it) }
         }
         return Scan(ids, boxes)
+    }
+
+    /**
+     * A crash makes Android (and HyperOS) switch the accessibility service off, which ends the lock and
+     * forces the parent to re-enable it. So one bad check is logged and skipped instead of crashing.
+     */
+    private fun safeEvaluate() {
+        try {
+            evaluate()
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "check failed", e)
+            store.put(KEY_ERROR to "${java.util.Date()}: $e")
+        }
+    }
+
+    /**
+     * A visible foreground notification tells Xiaomi/Vivo battery managers this app is in use,
+     * so they stop killing it after a few minutes (which also switches off its Accessibility access).
+     */
+    private fun stayInForeground() {
+        try {
+            val nm = getSystemService(NotificationManager::class.java)
+            nm.createNotificationChannel(NotificationChannel(CHANNEL, "Shorts Lock running", NotificationManager.IMPORTANCE_LOW))
+            val n = Notification.Builder(this, CHANNEL)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setContentTitle("Shorts Lock is ready")
+                .setContentText("Keeps the lock bubble running")
+                .setOngoing(true)
+                .build()
+            if (Build.VERSION.SDK_INT >= 34) startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            else startForeground(NOTIFICATION_ID, n)
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "could not start foreground", e) // the service still works, just easier for the system to kill
+            store.put(KEY_ERROR to "${java.util.Date()}: foreground: $e")
+        }
     }
 
     private fun evaluate() {
@@ -500,6 +541,10 @@ class ShortsLockService : AccessibilityService() {
         const val KEY_SHIELDS = "dbg_shields"
         private const val KEY_LOCK_UNTIL = "lock_until"
         const val KEY_DURATION = "duration"
+        const val KEY_ERROR = "dbg_error"
+        private const val TAG = "ShortsLock"
+        private const val CHANNEL = "running"
+        private const val NOTIFICATION_ID = 1
         private const val KEY_BOOT = "lock_boot"
         const val YOUTUBE = LockPolicy.YOUTUBE
         private const val YT_ID_PREFIX = "$YOUTUBE:id/"
