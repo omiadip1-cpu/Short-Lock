@@ -106,6 +106,9 @@ class MainActivity : Activity() {
         text("Last state: ${store.get(ShortsLockService.KEY_STATE) ?: "none"}")
         text("Recorded elements: ${ids.size}")
         if (ids.isNotEmpty()) text(ids.take(40).joinToString("\n") { it.substringAfter(":id/") }, 11f)
+        val shields = store.get(ShortsLockService.KEY_SHIELDS)?.lines()?.filter { it.isNotBlank() }.orEmpty()
+        text("Shields (left,top,right,bottom px): ${shields.size}")
+        if (shields.isNotEmpty()) text(shields.joinToString("\n"), 11f)
     }
 
     override fun onResume() {

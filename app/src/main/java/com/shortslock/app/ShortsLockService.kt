@@ -4,6 +4,7 @@ import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
@@ -30,6 +31,9 @@ class ShortsLockService : AccessibilityService() {
     private var menu: View? = null
     private var detector: ShortsDetector? = null
     private var evalScheduled = false
+    private var shieldBoxes: List<Box> = emptyList()
+    private val shieldViews = ArrayList<View>()
+    private var tint = false // test aid: paints the shields red so you can see where they are
 
     private val density get() = resources.displayMetrics.density
     private fun dp(v: Int) = (v * density).toInt()
@@ -60,35 +64,92 @@ class ShortsLockService : AccessibilityService() {
 
     // ---- detection ----
 
-    private fun collectIds(root: AccessibilityNodeInfo): Set<String> {
+    private class Scan(val ids: Set<String>, val clickable: List<Box>)
+
+    private fun scan(root: AccessibilityNodeInfo, withBoxes: Boolean): Scan {
         val ids = HashSet<String>()
+        val boxes = ArrayList<Box>()
+        val r = Rect()
         val stack = ArrayDeque<AccessibilityNodeInfo>().apply { add(root) }
         var visited = 0
         while (stack.isNotEmpty() && visited++ < MAX_NODES) {
             val n = stack.removeLast()
             if (!n.isVisibleToUser) continue // skips pre-loaded neighbouring Shorts pages
             n.viewIdResourceName?.takeIf { it.startsWith(YT_ID_PREFIX) }?.let { ids += it }
+            if (withBoxes && (n.isClickable || n.isLongClickable)) {
+                n.getBoundsInScreen(r)
+                boxes += Box(r.left, r.top, r.right, r.bottom)
+            }
             for (i in 0 until n.childCount) n.getChild(i)?.let { stack.add(it) }
         }
-        return ids
+        return Scan(ids, boxes)
     }
 
     private fun startWatching() {
         val root = rootInActiveWindow
         if (root?.packageName?.toString() != YOUTUBE) { toast("Open YouTube Shorts first"); return }
-        val ids = collectIds(root)
-        if (ids.size < MIN_IDS) { toast("Could not read the YouTube screen (${ids.size} elements)"); return }
-        val fp = Fingerprint(ids)
-        PrefsStore(this).put(KEY_SNAPSHOT to fp.serialize(), KEY_STATE to "ON (at START)")
+        val s = scan(root, withBoxes = true)
+        if (s.ids.size < MIN_IDS) { toast("Could not read the YouTube screen (${s.ids.size} elements)"); return }
+        val fp = Fingerprint(s.ids)
+        shieldBoxes = ShieldPlanner.plan(s.clickable, screenW, screenH, dp(SHIELD_PAD_DP))
+        PrefsStore(this).put(
+            KEY_SNAPSHOT to fp.serialize(),
+            KEY_SHIELDS to shieldBoxes.joinToString("\n") { "${it.l},${it.t},${it.r},${it.b}" },
+            KEY_STATE to "ON (at START, ${shieldBoxes.size} shields)",
+        )
         detector = ShortsDetector(fp)
         paint(true)
-        toast("Shorts recorded: ${ids.size} elements")
+        showShields()
+        toast("Locked: ${s.ids.size} elements, ${shieldBoxes.size} shields")
     }
 
     private fun stopWatching() {
         detector = null
+        hideShields()
         PrefsStore(this).put(KEY_STATE to "stopped")
         paint(null)
+    }
+
+    // ---- shields ----
+
+    private fun showShields() {
+        hideShields()
+        hideMenu()
+        for (b in shieldBoxes) {
+            val v = View(this).apply {
+                setBackgroundColor(if (tint) 0x44FF0000 else Color.TRANSPARENT)
+                setOnTouchListener { _, _ -> true } // swallow every touch on a blocked button
+            }
+            val lp = WindowManager.LayoutParams(
+                b.w, b.h,
+                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT,
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START
+                x = b.l
+                y = b.t
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+            wm.addView(v, lp)
+            shieldViews += v
+        }
+        raiseBubble()
+    }
+
+    private fun hideShields() {
+        shieldViews.forEach { wm.removeView(it) }
+        shieldViews.clear()
+    }
+
+    /** Shields are added after the bubble, so re-add the bubble to keep it on top and tappable. */
+    private fun raiseBubble() {
+        val v = bubble ?: return
+        val lp = bubbleLp ?: return
+        wm.removeViewImmediate(v)
+        wm.addView(v, lp)
     }
 
     private fun evaluate() {
@@ -96,9 +157,10 @@ class ShortsLockService : AccessibilityService() {
         val root = rootInActiveWindow
         val yt = root?.packageName?.toString() == YOUTUBE
         val before = d.onShorts
-        val on = d.update(yt, if (root != null && yt) collectIds(root) else emptySet())
+        val on = d.update(yt, if (root != null && yt) scan(root, withBoxes = false).ids else emptySet())
         if (on != before) {
             paint(on)
+            if (on) showShields() else hideShields() // never leave shields over another app
             PrefsStore(this).put(KEY_STATE to (if (on) "ON" else "LEFT") + " (score %.2f)".format(d.lastScore))
         }
     }
@@ -142,6 +204,7 @@ class ShortsLockService : AccessibilityService() {
 
     fun hideBubble() {
         hideMenu()
+        hideShields()
         bubble?.let { wm.removeView(it) }
         bubble = null
         bubbleBg = null
@@ -190,13 +253,24 @@ class ShortsLockService : AccessibilityService() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(8), dp(8), dp(8), dp(8))
             background = GradientDrawable().apply { cornerRadius = dp(12).toFloat(); setColor(0xEE202020.toInt()) }
-            addView(TextView(context).apply { text = status; setTextColor(Color.WHITE) })
+            addView(TextView(context).apply {
+                text = "$status\nShields: ${shieldViews.size}"
+                setTextColor(Color.WHITE)
+            })
             addView(Button(context).apply {
-                text = "START"
+                text = "START (lock)"
                 setOnClickListener { hideMenu(); startWatching() }
             })
             addView(Button(context).apply {
-                text = "Stop detection (test)"
+                text = if (tint) "Hide shield tint (test)" else "Show shield tint (test)"
+                setOnClickListener {
+                    hideMenu()
+                    tint = !tint
+                    if (shieldViews.isNotEmpty()) showShields()
+                }
+            })
+            addView(Button(context).apply {
+                text = "Stop lock (test, no PIN yet)"
                 setOnClickListener { hideMenu(); stopWatching() }
             })
             addView(Button(context).apply {
@@ -233,11 +307,13 @@ class ShortsLockService : AccessibilityService() {
         const val KEY_ACTIVE = "active"
         const val KEY_SNAPSHOT = "snapshot"
         const val KEY_STATE = "dbg_state"
+        const val KEY_SHIELDS = "dbg_shields"
+        private const val SHIELD_PAD_DP = 4
         const val YOUTUBE = "com.google.android.youtube"
         private const val YT_ID_PREFIX = "$YOUTUBE:id/"
         private const val BUBBLE_DP = 52
         private const val MENU_W_DP = 190
-        private const val MENU_H_DP = 230
+        private const val MENU_H_DP = 300
         private const val EVAL_MS = 300L
         private const val MAX_NODES = 3000
         private const val MIN_IDS = 5
