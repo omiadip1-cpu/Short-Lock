@@ -24,7 +24,6 @@ class KeystoreSigner(private val alias: String = "shortslock_pin_hmac") : Signer
 class PrefsStore(context: Context) : Store {
     private val prefs = context.getSharedPreferences("pin", Context.MODE_PRIVATE)
     override fun get(key: String) = prefs.getString(key, null)
-    override fun put(vararg kv: Pair<String, String?>) {
+    override fun put(vararg kv: Pair<String, String?>): Boolean =
         prefs.edit().apply { kv.forEach { (k, v) -> if (v == null) remove(k) else putString(k, v) } }.commit()
-    }
 }

@@ -15,10 +15,13 @@ jobs:
         with: { gradle-version: 8.7 }
       - name: Load signing key
         if: env.HAS_KEY == 'true'
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+          KEY_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: |
-          echo "${{ secrets.SIGNING_KEYSTORE_B64 }}" | base64 -d > $RUNNER_TEMP/shortslock.p12
-          echo "SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/shortslock.p12" >> $GITHUB_ENV
-          echo "SIGNING_PASSWORD=${{ secrets.SIGNING_PASSWORD }}" >> $GITHUB_ENV
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/shortslock.p12"
+          printf '%s\n' "SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/shortslock.p12" >> "$GITHUB_ENV"
+          printf '%s\n' "SIGNING_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
       - run: gradle :app:testDebugUnitTest :app:assembleDebug :app:lintDebug --no-daemon
       - name: Build signed release
         if: env.HAS_KEY == 'true'

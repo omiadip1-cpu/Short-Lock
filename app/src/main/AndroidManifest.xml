@@ -9,6 +9,8 @@
     </queries>
     <application
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
         android:label="Shorts Lock"
         android:theme="@android:style/Theme.Material.NoActionBar">
         <activity

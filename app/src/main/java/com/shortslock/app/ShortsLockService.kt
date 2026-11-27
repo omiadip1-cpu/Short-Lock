@@ -266,7 +266,7 @@ class ShortsLockService : AccessibilityService() {
             wm.addView(v, overlayParams(b.w, b.h, true).apply { x = b.l; y = b.t })
             shieldViews += v
         }
-        raiseTop()
+        if (shieldViews.isNotEmpty()) raiseTop() // with zero shields this runs every tick; re-adding would make the PIN screen drop taps
     }
 
     private fun hideShields() {

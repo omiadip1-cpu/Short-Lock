@@ -12,7 +12,8 @@ interface Signer { fun sign(data: ByteArray): ByteArray }
 /** Tiny string store; a null value removes the key. */
 interface Store {
     fun get(key: String): String?
-    fun put(vararg kv: Pair<String, String?>)
+    /** Returns false if the write did not reach storage. */
+    fun put(vararg kv: Pair<String, String?>): Boolean
 }
 
 class PinManager(
@@ -35,11 +36,12 @@ class PinManager(
         val code = newRecoveryCode()
         val pinSalt = salt()
         val recSalt = salt()
-        store.put(
+        val saved = store.put(
             PIN_SALT to pinSalt, PIN_HASH to hash(pin, pinSalt),
             REC_SALT to recSalt, REC_HASH to hash(normalize(code), recSalt),
             FAILS to "0", UNTIL to "0",
         )
+        check(saved) { "Could not save the PIN" }
         return code
     }
 
@@ -67,8 +69,7 @@ class PinManager(
         val recSalt = store.get(REC_SALT) ?: return false
         if (!same(hash(normalize(code), recSalt), store.get(REC_HASH)!!)) return false
         val pinSalt = salt()
-        store.put(PIN_SALT to pinSalt, PIN_HASH to hash(newPin, pinSalt), FAILS to "0", UNTIL to "0")
-        return true
+        return store.put(PIN_SALT to pinSalt, PIN_HASH to hash(newPin, pinSalt), FAILS to "0", UNTIL to "0")
     }
 
     private fun hash(secret: String, saltB64: String): String {

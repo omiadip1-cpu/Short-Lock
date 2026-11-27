@@ -12,8 +12,9 @@ class PinManagerTest {
     private class MapStore : Store {
         val m = HashMap<String, String>()
         override fun get(key: String) = m[key]
-        override fun put(vararg kv: Pair<String, String?>) {
+        override fun put(vararg kv: Pair<String, String?>): Boolean {
             kv.forEach { (k, v) -> if (v == null) m.remove(k) else m[k] = v }
+            return true
         }
     }
 

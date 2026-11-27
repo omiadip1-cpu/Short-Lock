@@ -54,7 +54,12 @@ class MainActivity : Activity() {
             when {
                 pin.length != 4 -> msg.text = "PIN must be 4 digits"
                 pin != b.text.toString() -> msg.text = "PINs do not match"
-                else -> { pendingCode = pm.setPin(pin); render() }
+                else -> try {
+                    pendingCode = pm.setPin(pin)
+                    render()
+                } catch (e: IllegalStateException) {
+                    msg.text = "Could not save the PIN. Please try again."
+                }
             }
         }
     }
@@ -174,7 +179,7 @@ class MainActivity : Activity() {
             when {
                 pin.length != 4 -> msg.text = "PIN must be 4 digits"
                 pm.resetWithRecovery(c.text.toString(), pin) -> render()
-                else -> msg.text = "Wrong recovery code"
+                else -> msg.text = "Wrong recovery code (or it could not be saved). Try again."
             }
         }
         button("Cancel") { render() }

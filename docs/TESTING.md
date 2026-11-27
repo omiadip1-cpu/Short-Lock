@@ -10,7 +10,8 @@ Run on each phone (Xiaomi and Vivo). Mark pass/fail.
 | 3 | YouTube > Shorts > bubble > Time > START | Toast "Locked for ...", bubble green |
 | 4 | Swipe up/down in the middle | Next/previous Short plays |
 | 5 | Tap middle of video | Pauses/resumes |
-| 6 | Tap Like, Dislike, Comments, Share, Remix, channel, Subscribe, Search, bottom tabs | Nothing happens |
+| 6 | Tap the buttons that were on screen at START (Like, Dislike, Comments, Share, Remix, channel, Search, bottom tabs) | Nothing happens |
+| 6b | Swipe to Shorts that show extra buttons (Subscribe, Shop, ads) and tap them | Record what happens: these may not be covered (known limit) |
 | 7 | Volume buttons | Volume changes |
 | 8 | Phone Home | Returns to Shorts within ~1-2 s |
 | 9 | Back (gesture or button) | Returns to Shorts within ~1-3 s |
@@ -24,7 +25,7 @@ Run on each phone (Xiaomi and Vivo). Mark pass/fail.
 | 16 | Timer: lock with 15 min, wait | Unlocks by itself at the end |
 | 17 | Incoming call / alarm while locked | Can answer/dismiss; then back to Shorts |
 | 18 | Screen off and on while locked | Lock still on; timer keeps counting |
-| 19 | Force-stop Shorts Lock while locked (crash) | Service restarts and lock resumes |
+| 19 | Simulate a crash while locked (not Force stop, which keeps the app stopped): from a computer run `adb shell am crash com.shortslock.app`, or `adb shell kill` its process | Service reconnects within seconds and the lock resumes (before the timer ends) |
 | 20 | Reboot while locked | Phone starts unlocked |
 | 21 | Recovery code | Resets the PIN |
 

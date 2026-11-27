@@ -26,7 +26,13 @@ class ShortsDetector(private val fp: Fingerprint, private val missLimit: Int = 3
     private var misses = 0
 
     fun update(isYoutube: Boolean, present: Set<String>): Boolean {
-        lastScore = if (isYoutube) fp.score(present) else 0.0
+        if (!isYoutube) { // another app is in front: never keep shields over it (e.g. an incoming call)
+            lastScore = 0.0
+            misses = missLimit
+            onShorts = false
+            return false
+        }
+        lastScore = fp.score(present)
         if (lastScore >= Fingerprint.THRESHOLD) {
             misses = 0
             onShorts = true

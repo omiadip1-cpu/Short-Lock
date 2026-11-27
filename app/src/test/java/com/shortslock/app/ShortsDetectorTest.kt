@@ -39,10 +39,10 @@ class ShortsDetectorTest {
         assertTrue(d.update(true, emptySet()))
     }
 
-    @Test fun otherAppCountsAsMissEvenIfIdsMatch() {
+    @Test fun otherAppIsOffImmediately() {
         val d = detector()
-        repeat(3) { d.update(false, shorts) }
-        assertFalse(d.onShorts)
+        assertTrue(d.update(true, shorts))
+        assertFalse(d.update(false, shorts))
         assertEquals(0.0, d.lastScore, 0.0)
     }
 
