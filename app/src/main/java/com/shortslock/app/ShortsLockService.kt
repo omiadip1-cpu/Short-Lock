@@ -455,8 +455,7 @@ class ShortsLockService : AccessibilityService() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(8), dp(8), dp(8), dp(8))
             background = GradientDrawable().apply { cornerRadius = dp(12).toFloat(); setColor(0xEE202020.toInt()) }
-            addView(TextView(context).apply { text = "Tap the bubble on Shorts to lock.
-Long-press for this menu."; setTextColor(Color.WHITE) })
+            addView(TextView(context).apply { text = "Tap the bubble on Shorts to lock.\nLong-press for this menu."; setTextColor(Color.WHITE) })
             addView(Button(context).apply {
                 text = "Time: ${LockPolicy.label(durationMin)}"
                 setOnClickListener {
