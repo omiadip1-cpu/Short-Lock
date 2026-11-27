@@ -74,7 +74,7 @@ class ShortsLockService : AccessibilityService() {
     private val tick = object : Runnable {
         override fun run() {
             if (!isLocked) return
-            safeEvaluate()
+            safeEvaluate(scanTree = false) // cheap: timer + which app is in front, no screen scan
             handler.postDelayed(this, TICK_MS)
         }
     }
@@ -92,7 +92,7 @@ class ShortsLockService : AccessibilityService() {
         // Coalesce bursts of events (video progress fires constantly) into one check per EVAL_MS.
         if (evalScheduled) return
         evalScheduled = true
-        handler.postDelayed({ evalScheduled = false; safeEvaluate() }, EVAL_MS)
+        handler.postDelayed({ evalScheduled = false; safeEvaluate(scanTree = true) }, EVAL_MS)
     }
 
     override fun onInterrupt() = Unit
@@ -193,9 +193,9 @@ class ShortsLockService : AccessibilityService() {
      * A crash makes Android (and HyperOS) switch the accessibility service off, which ends the lock and
      * forces the parent to re-enable it. So one bad check is logged and skipped instead of crashing.
      */
-    private fun safeEvaluate() {
+    private fun safeEvaluate(scanTree: Boolean) {
         try {
-            evaluate()
+            evaluate(scanTree)
         } catch (e: RuntimeException) {
             Log.w(TAG, "check failed", e)
             store.put(KEY_ERROR to "${java.util.Date()}: $e")
@@ -224,13 +224,21 @@ class ShortsLockService : AccessibilityService() {
         }
     }
 
-    private fun evaluate() {
+    /**
+     * [scanTree] = read YouTube's screen to check it is still Shorts. That is the expensive part, so it only runs
+     * when the screen actually changed (an accessibility event). Vivo kills apps that use a lot of background power.
+     */
+    private fun evaluate(scanTree: Boolean) {
         val d = detector ?: return
         if (System.currentTimeMillis() >= lockUntil) { endLock("Time is up. Lock ended."); return }
         val root = rootInActiveWindow
         val pkg = root?.packageName?.toString()
         val yt = pkg == YOUTUBE
-        val on = d.update(yt, if (root != null && yt) scan(root, withBoxes = false).ids else emptySet())
+        val on = when {
+            !yt -> d.update(false, emptySet())
+            scanTree && root != null -> d.update(true, scan(root, withBoxes = false).ids)
+            else -> d.onShorts
+        }
 
         // Shields exist only while Shorts is on screen, so they never sit over another app for long.
         if (on && shieldViews.isEmpty()) showShields() else if (!on && shieldViews.isNotEmpty()) hideShields()
@@ -553,7 +561,7 @@ class ShortsLockService : AccessibilityService() {
         private const val BUBBLE_DP = 52
         private const val MENU_W_DP = 200
         private const val MENU_H_DP = 300
-        private const val EVAL_MS = 300L
+        private const val EVAL_MS = 500L
         private const val TICK_MS = 1000L
         private const val RETURN_COOLDOWN_MS = 1000L
         private const val RETURN_IN_YOUTUBE_COOLDOWN_MS = 3000L
